@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Windows.Forms;
+using System.Drawing;
+using Magic_RDR.RPF;
 using Magic_RDR.Application;
 using static Magic_RDR.RPF6.RPF6TOC;
 
@@ -50,6 +52,56 @@ namespace Magic_RDR.Viewers
             Reader = new IOReader(new MemoryStream(data), IOReader.Endian.Little);
             Shader = new ShaderDictionary(Reader);
             propertyGrid1.SelectedObject = Shader;
+            SetTheme();
+        }
+
+        [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+
+        private void SetTheme()
+        {
+            if (RPF6FileNameHandler.DarkMode)
+            {
+                this.BackColor = Color.FromArgb(45, 45, 48);
+                this.ForeColor = Color.White;
+                ApplyThemeToControls(this.Controls);
+
+                // Enable Dark Title Bar
+                int useImmersiveDarkMode = 1;
+                DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useImmersiveDarkMode, sizeof(int));
+            }
+        }
+
+        private void ApplyThemeToControls(Control.ControlCollection controls)
+        {
+            foreach (Control control in controls)
+            {
+                if (control is PropertyGrid propertyGrid)
+                {
+                    propertyGrid.ViewBackColor = Color.FromArgb(30, 30, 30);
+                    propertyGrid.ViewForeColor = Color.White;
+                    propertyGrid.LineColor = Color.FromArgb(60, 60, 60);
+                    propertyGrid.CategoryForeColor = Color.White;
+                    propertyGrid.HelpBackColor = Color.FromArgb(45, 45, 48);
+                    propertyGrid.HelpForeColor = Color.White;
+                    propertyGrid.BackColor = Color.FromArgb(45, 45, 48);
+                    propertyGrid.CommandsBackColor = Color.FromArgb(45, 45, 48);
+                    propertyGrid.CommandsForeColor = Color.White;
+                }
+                else if (control is MenuStrip menuStrip)
+                {
+                    menuStrip.BackColor = Color.FromArgb(45, 45, 48);
+                    menuStrip.ForeColor = Color.White;
+                    // menuStrip.Renderer = new DarkThemeRenderer(); // If implemented or reusing a shared one, but for now simple color
+                }
+
+                if (control.HasChildren)
+                {
+                    ApplyThemeToControls(control.Controls);
+                }
+            }
         }
 
         [System.ComponentModel.TypeConverter(typeof(System.ComponentModel.ExpandableObjectConverter))]

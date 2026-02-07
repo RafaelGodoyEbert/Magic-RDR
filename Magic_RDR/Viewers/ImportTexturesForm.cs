@@ -30,6 +30,115 @@ namespace Magic_RDR.Viewers
             this.validateButton.Enabled = false;
 
             this.UpdateListView();
+            SetTheme();
+        }
+
+        [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+        [System.Runtime.InteropServices.DllImport("uxtheme.dll", ExactSpelling = true, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+        private static extern int SetWindowTheme(IntPtr hWnd, string pszSubAppName, string pszSubIdList);
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+
+        private void SetTheme()
+        {
+            if (Magic_RDR.RPF.RPF6FileNameHandler.DarkMode)
+            {
+                this.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+                this.ForeColor = System.Drawing.Color.White;
+
+                listView.BackColor = System.Drawing.Color.FromArgb(30, 30, 30);
+                listView.ForeColor = System.Drawing.Color.White;
+                listView.OwnerDraw = true;
+                SetWindowTheme(listView.Handle, "DarkMode_Explorer", null);
+                listView.DrawColumnHeader += ListView_DrawColumnHeader;
+                listView.DrawItem += ListView_DrawItem;
+                listView.DrawSubItem += ListView_DrawSubItem;
+
+                richTextBox1.BackColor = System.Drawing.Color.FromArgb(30, 30, 30);
+                richTextBox1.ForeColor = System.Drawing.Color.White;
+                
+                ApplyThemeToControls(this.Controls);
+
+                int useImmersiveDarkMode = 1;
+                DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useImmersiveDarkMode, sizeof(int));
+            }
+        }
+
+        private void ListView_DrawColumnHeader(object sender, DrawListViewColumnHeaderEventArgs e)
+        {
+            e.Graphics.FillRectangle(new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(45, 45, 48)), e.Bounds);
+            e.Graphics.DrawRectangle(new System.Drawing.Pen(System.Drawing.Color.FromArgb(60, 60, 60)), e.Bounds);
+            TextRenderer.DrawText(e.Graphics, e.Header.Text, ((ListView)sender).Font, e.Bounds, System.Drawing.Color.White, TextFormatFlags.VerticalCenter | TextFormatFlags.Left);
+        }
+
+        private void ListView_DrawItem(object sender, DrawListViewItemEventArgs e)
+        {
+            if (e.Item.Selected) e.Graphics.FillRectangle(new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(60, 60, 60)), e.Bounds);
+            else e.Graphics.FillRectangle(new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(30, 30, 30)), e.Bounds);
+            e.DrawText();
+        }
+
+        private void ListView_DrawSubItem(object sender, DrawListViewSubItemEventArgs e)
+        {
+             if (e.Item.Selected) e.Graphics.FillRectangle(new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(60, 60, 60)), e.Bounds);
+             else e.Graphics.FillRectangle(new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(30, 30, 30)), e.Bounds);
+             e.DrawText();
+        }
+
+        private void ApplyThemeToControls(Control.ControlCollection controls)
+        {
+             foreach (Control control in controls)
+             {
+                 if (control is ToolStrip toolStrip)
+                 {
+                     toolStrip.Renderer = new DarkThemeRenderer();
+                     toolStrip.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+                     toolStrip.ForeColor = System.Drawing.Color.White;
+                 }
+                 else if (control is Label label)
+                 {
+                     label.ForeColor = System.Drawing.Color.White;
+                     label.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+                 }
+                 else if (control is Panel panel)
+                 {
+                     panel.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+                     panel.ForeColor = System.Drawing.Color.White;
+                 }
+                 else if (control is SplitContainer split)
+                 {
+                     split.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+                 }
+
+                 if (control.HasChildren) ApplyThemeToControls(control.Controls);
+             }
+        }
+
+        private class DarkThemeRenderer : ToolStripProfessionalRenderer
+        {
+            public DarkThemeRenderer() : base(new DarkThemeColorTable()) { }
+        }
+
+        private class DarkThemeColorTable : ProfessionalColorTable
+        {
+            public override System.Drawing.Color MenuItemSelected => System.Drawing.Color.FromArgb(60, 60, 60);
+            public override System.Drawing.Color MenuItemSelectedGradientBegin => System.Drawing.Color.FromArgb(60, 60, 60);
+            public override System.Drawing.Color MenuItemSelectedGradientEnd => System.Drawing.Color.FromArgb(60, 60, 60);
+            public override System.Drawing.Color MenuBorder => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color MenuItemBorder => System.Drawing.Color.FromArgb(60, 60, 60);
+            public override System.Drawing.Color MenuItemPressedGradientBegin => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color MenuItemPressedGradientEnd => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color ToolStripDropDownBackground => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color ImageMarginGradientBegin => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color ImageMarginGradientMiddle => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color ImageMarginGradientEnd => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color ButtonSelectedHighlight => System.Drawing.Color.FromArgb(60, 60, 60);
+            public override System.Drawing.Color ButtonSelectedGradientBegin => System.Drawing.Color.FromArgb(60, 60, 60);
+            public override System.Drawing.Color ButtonSelectedGradientEnd => System.Drawing.Color.FromArgb(60, 60, 60);
+            public override System.Drawing.Color ButtonPressedGradientBegin => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color ButtonPressedGradientEnd => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color ButtonSelectedBorder => System.Drawing.Color.FromArgb(60, 60, 60);
+            public override System.Drawing.Color ToolStripBorder => System.Drawing.Color.FromArgb(45, 45, 48);
         }
 
         private void addTextureButton_Click(object sender, EventArgs e)

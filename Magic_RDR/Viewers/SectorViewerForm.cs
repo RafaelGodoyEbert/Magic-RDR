@@ -79,6 +79,33 @@ namespace Magic_RDR.Models
                 }
                 count++;
             }
+            SetTheme();
+        }
+
+        [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+        [System.Runtime.InteropServices.DllImport("uxtheme.dll", ExactSpelling = true, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+        public static extern int SetWindowTheme(IntPtr hWnd, string pszSubAppName, string pszSubIdList);
+
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+
+        private void SetTheme()
+        {
+            if (RPF6FileNameHandler.DarkMode)
+            {
+                this.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+                this.ForeColor = System.Drawing.Color.White;
+                treeView.BackColor = System.Drawing.Color.FromArgb(30, 30, 30);
+                treeView.ForeColor = System.Drawing.Color.White;
+                
+                // Dark Title Bar
+                int useImmersiveDarkMode = 1;
+                DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useImmersiveDarkMode, sizeof(int));
+                
+                // Dark Scrollbar for TreeView
+                SetWindowTheme(treeView.Handle, "DarkMode_Explorer", null);
+            }
         }
 
         public string FormatFloat(float value)

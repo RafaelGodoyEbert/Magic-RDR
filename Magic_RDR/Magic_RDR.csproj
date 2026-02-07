@@ -93,35 +93,35 @@
     </Reference>
     <Reference Include="FastColoredTextBox">
       <HintPath>bin\x86\Debug\Assemblies\FastColoredTextBox.dll</HintPath>
-      <Private>False</Private>
     </Reference>
     <Reference Include="HelixToolkit.Wpf">
       <HintPath>bin\x86\Debug\Assemblies\HelixToolkit.Wpf.dll</HintPath>
-      <Private>False</Private>
+      <Private>True</Private>
     </Reference>
     <Reference Include="ICSharpCode.SharpZipLib">
-      <HintPath>bin\x86\Debug\Assemblies\ICSharpCode.SharpZipLib.dll</HintPath>
-      <Private>False</Private>
+      <HintPath>..\packages\SharpZipLib.1.4.2\lib\netstandard2.0\ICSharpCode.SharpZipLib.dll</HintPath>
+      <Private>True</Private>
     </Reference>
-    <Reference Include="Microsoft.DirectX, Version=1.0.1901.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\OneDrive\Bureau\TerrainGeneratorTutorial0.1-master\TerrainGeneratorTutorial0.1\bin\Debug\Microsoft.DirectX.dll</HintPath>
+    <Reference Include="Microsoft.DirectX">
+      <HintPath>bin\x86\Debug\Assemblies\Microsoft.DirectX.dll</HintPath>
+      <Private>True</Private>
     </Reference>
-    <Reference Include="Microsoft.DirectX.Direct3D, Version=1.0.1901.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\OneDrive\Bureau\TerrainGeneratorTutorial0.1-master\TerrainGeneratorTutorial0.1\bin\Debug\Microsoft.DirectX.Direct3D.dll</HintPath>
+    <Reference Include="Microsoft.DirectX.Direct3D">
+      <HintPath>bin\x86\Debug\Assemblies\Microsoft.DirectX.Direct3D.dll</HintPath>
+      <Private>True</Private>
     </Reference>
+    <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="Microsoft.VisualC" />
     <Reference Include="Microsoft.Win32.Registry, Version=4.1.3.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Win32.Registry.4.7.0\lib\net461\Microsoft.Win32.Registry.dll</HintPath>
+      <Private>True</Private>
     </Reference>
-    <Reference Include="ModelViewer">
-      <HintPath>..\ModelViewer\bin\Debug\ModelViewer.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>bin\x86\Debug\Assemblies\Newtonsoft.Json.dll</HintPath>
+    <ProjectReference Include="..\ModelViewer\ModelViewer.csproj">
+      <Project>{572F31BD-3908-4673-9A4A-5BF90EBA5ED4}</Project>
+      <Name>ModelViewer</Name>
+    </ProjectReference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="Pfim">
       <HintPath>bin\x86\Debug\Assemblies\Pfim.dll</HintPath>
@@ -129,7 +129,7 @@
     </Reference>
     <Reference Include="PikIO">
       <HintPath>bin\x86\Debug\Assemblies\PikIO.dll</HintPath>
-      <Private>False</Private>
+      <Private>True</Private>
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />

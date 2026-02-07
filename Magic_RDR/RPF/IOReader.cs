@@ -136,11 +136,16 @@ namespace Magic_RDR.Application
 
         public override byte ReadByte()
         {
+            if (base.BaseStream.Position + 1 > base.BaseStream.Length)
+                return 0;
             return base.ReadByte();
         }
 
         public ushort ReadUShort()
         {
+            if (base.BaseStream.Position + 2 > base.BaseStream.Length)
+                return 0;
+
             var value = base.ReadUInt16();
             return BYTE_ORDER == Endian.Big ? value.Swap() : value;
         }
@@ -154,6 +159,9 @@ namespace Magic_RDR.Application
         public int ReadInt32(bool LittleEndian = false)
         {
             byte[] byteBuffer = base.ReadBytes(4);
+            if (byteBuffer.Length < 4)
+                return 0; // Or throw custom exception/handle gracefully
+
             if (LittleEndian || BYTE_ORDER == Endian.Little)
                 return BitConverter.ToInt32(byteBuffer, 0);
             else
@@ -184,18 +192,24 @@ namespace Magic_RDR.Application
 
         public uint ReadUInt()
         {
+            if (base.BaseStream.Position + 4 > base.BaseStream.Length)
+                return 0;
             var value = base.ReadUInt32();
             return BYTE_ORDER == Endian.Big ? value.Swap() : value;
         }
 
         public ulong ReadULong()
         {
+            if (base.BaseStream.Position + 8 > base.BaseStream.Length)
+                return 0;
             var value = base.ReadUInt64();
             return BYTE_ORDER == Endian.Big ? value.Swap() : value;
         }
 
         public float ReadFloat()
         {
+            if (base.BaseStream.Position + 4 > base.BaseStream.Length)
+                return 0.0f;
             var value = base.ReadSingle();
             return BYTE_ORDER == Endian.Big ? value.Swap() : value;
         }

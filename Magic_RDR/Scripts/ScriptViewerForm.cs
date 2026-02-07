@@ -38,6 +38,97 @@ namespace Magic_RDR
             Reader = new IOReader(new MemoryStream(fileData), (AppGlobals.Platform == AppGlobals.PlatformEnum.Switch) ? IOReader.Endian.Little : IOReader.Endian.Big);
 
             InitForm();
+            SetTheme();
+        }
+
+        [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+        [System.Runtime.InteropServices.DllImport("uxtheme.dll", ExactSpelling = true, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+        public static extern int SetWindowTheme(IntPtr hWnd, string pszSubAppName, string pszSubIdList);
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+
+        private void SetTheme()
+        {
+            if (RPF6FileNameHandler.DarkMode)
+            {
+                this.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+                this.ForeColor = System.Drawing.Color.White;
+
+                // Theme FastColoredTextBox
+                textBox.BackColor = System.Drawing.Color.FromArgb(30, 30, 30);
+                textBox.ForeColor = System.Drawing.Color.White;
+                textBox.IndentBackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+                textBox.LineNumberColor = System.Drawing.Color.FromArgb(100, 100, 100);
+                textBox.CaretColor = System.Drawing.Color.White;
+                textBox.ServiceLinesColor = System.Drawing.Color.FromArgb(60, 60, 60);
+                // textBox.SelectionColor = System.Drawing.Color.FromArgb(60, 0, 0, 255); 
+                
+                SetWindowTheme(textBox.Handle, "DarkMode_Explorer", null); 
+
+                // Theme Checkboxes
+                btnShowNativeNamespaces.ForeColor = System.Drawing.Color.White;
+                btnShowNativeNamespaces.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+                btnShowRawDisassembly.ForeColor = System.Drawing.Color.White;
+                btnShowRawDisassembly.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+
+                ApplyThemeToControls(this.Controls);
+
+                // Enable Dark Title Bar
+                int useImmersiveDarkMode = 1;
+                DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useImmersiveDarkMode, sizeof(int));
+            }
+        }
+
+        private void ApplyThemeToControls(Control.ControlCollection controls)
+        {
+            foreach (Control control in controls)
+            {
+                if (control is MenuStrip menuStrip)
+                {
+                    menuStrip.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+                    menuStrip.ForeColor = System.Drawing.Color.White;
+                    menuStrip.Renderer = new DarkThemeRenderer();
+                }
+                else if (control is ToolStrip toolStrip)
+                {
+                    toolStrip.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+                    toolStrip.ForeColor = System.Drawing.Color.White;
+                    toolStrip.Renderer = new DarkThemeRenderer();
+                }
+                else if (control is StatusStrip statusStrip)
+                {
+                    statusStrip.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+                    statusStrip.ForeColor = System.Drawing.Color.White;
+                    statusStrip.Renderer = new DarkThemeRenderer();
+                }
+            }
+        }
+
+        private class DarkThemeRenderer : ToolStripProfessionalRenderer
+        {
+            public DarkThemeRenderer() : base(new DarkThemeColorTable()) { }
+        }
+
+        private class DarkThemeColorTable : ProfessionalColorTable
+        {
+            public override System.Drawing.Color MenuItemSelected => System.Drawing.Color.FromArgb(60, 60, 60);
+            public override System.Drawing.Color MenuItemSelectedGradientBegin => System.Drawing.Color.FromArgb(60, 60, 60);
+            public override System.Drawing.Color MenuItemSelectedGradientEnd => System.Drawing.Color.FromArgb(60, 60, 60);
+            public override System.Drawing.Color MenuBorder => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color MenuItemBorder => System.Drawing.Color.FromArgb(60, 60, 60);
+            public override System.Drawing.Color MenuItemPressedGradientBegin => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color MenuItemPressedGradientEnd => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color ToolStripDropDownBackground => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color ImageMarginGradientBegin => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color ImageMarginGradientMiddle => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color ImageMarginGradientEnd => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color ButtonSelectedHighlight => System.Drawing.Color.FromArgb(60, 60, 60);
+            public override System.Drawing.Color ButtonSelectedGradientBegin => System.Drawing.Color.FromArgb(60, 60, 60);
+            public override System.Drawing.Color ButtonSelectedGradientEnd => System.Drawing.Color.FromArgb(60, 60, 60);
+            public override System.Drawing.Color ButtonPressedGradientBegin => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color ButtonPressedGradientEnd => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color ButtonSelectedBorder => System.Drawing.Color.FromArgb(60, 60, 60);
+            public override System.Drawing.Color ToolStripBorder => System.Drawing.Color.FromArgb(45, 45, 48);
         }
 
         void InitForm()

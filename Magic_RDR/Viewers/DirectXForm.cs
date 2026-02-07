@@ -43,7 +43,29 @@ namespace Magic_RDR.Viewers
 			camUp = new Vector3(0, 1, 0);
 
 			InitializeEventHandler();
+            SetTheme();
 		}
+
+        [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+
+        private void SetTheme()
+        {
+             if (Magic_RDR.RPF.RPF6FileNameHandler.DarkMode)
+             {
+                 this.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+                 this.ForeColor = System.Drawing.Color.White;
+                 
+                 foreach(Control c in this.Controls)
+                 {
+                     if(c is Label) c.ForeColor = System.Drawing.Color.White;
+                 }
+                
+                int useImmersiveDarkMode = 1;
+                DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useImmersiveDarkMode, sizeof(int));
+             }
+        }
 
 		private void InitializeEventHandler()
 		{
@@ -78,7 +100,8 @@ namespace Magic_RDR.Viewers
 
 		private void DirectXForm_Paint(object sender, PaintEventArgs e)
 		{
-			device.Clear(ClearFlags.Target | ClearFlags.ZBuffer, Color.Aqua, 1, 0);
+            System.Drawing.Color clearColor = Magic_RDR.RPF.RPF6FileNameHandler.DarkMode ? System.Drawing.Color.FromArgb(30,30,30) : Color.Aqua;
+			device.Clear(ClearFlags.Target | ClearFlags.ZBuffer, clearColor, 1, 0);
 			device.VertexFormat = CustomVertex.PositionColored.Format;
 			SetupCamera();
 

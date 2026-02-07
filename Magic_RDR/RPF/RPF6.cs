@@ -209,10 +209,110 @@ namespace Magic_RDR
                 }
                 else if (super.ReadBackFromRPF)
                 {
-                    long r = asFile.GetOffset();
-                    RPFIO.Position = r;
-                    asFile.SetOffset(io.Position);
-                    RPFIO.BufferCopy(io.BaseStream, (uint)asFile.SizeInArchive, 262144U);
+                    bool processed = false;
+                    int originalFlag1 = asFile.FlagInfo.Flag1;
+                    int originalFlag2 = asFile.FlagInfo.Flag2;
+                    long originalSize = asFile.SizeInArchive;
+
+                    if (!RPF6FileNameHandler.EncryptData)
+                    {
+                        try
+                        {
+                            long oldPos = RPFIO.Position;
+                            RPFIO.Position = asFile.Offset;
+                            byte[] rawData = RPFIO.ReadBytes((int)asFile.SizeInArchive);
+                            RPFIO.Position = oldPos;
+
+                            byte[] contentToWrite = null;
+                            bool isResourcePath = false;
+                            int resVSize = 0;
+                            int resPSize = 0;
+
+                            if (asFile.FlagInfo.IsResource)
+                            {
+                                using (MemoryStream ms = new MemoryStream(rawData))
+                                {
+                                    byte[] decryptedPayload = ResourceUtils.ResourceInfo.GetDataFromStream(ms);
+                                    if (decryptedPayload != null && decryptedPayload.Length > 0)
+                                    {
+                                        resVSize = asFile.FlagInfo.BaseResourceSizeV;
+                                        resPSize = asFile.FlagInfo.BaseResourceSizeP;
+                                        PikIO headerIO = new PikIO(new MemoryStream(rawData), PikIO.Endianess.Big);
+                                        uint magic = headerIO.ReadUInt32();
+                                        int resType = headerIO.ReadInt32(); 
+                                        if (resType == 2) resType = 1;
+
+                                        contentToWrite = ResourceUtils.FlagInfo.RSC05_PackResource(decryptedPayload, resVSize, resPSize, resType, AppGlobals.Platform, false);
+                                        isResourcePath = true;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                // Generic File
+                                if (asFile.FlagInfo.IsCompressed)
+                                {
+                                    int outLen = asFile.FlagInfo.GetTotalSize();
+                                    try {
+                                        if (AppGlobals.Platform == AppGlobals.PlatformEnum.Switch)
+                                            contentToWrite = DataUtils.DecompressZStandard(rawData);
+                                        else if (AppGlobals.Platform == AppGlobals.PlatformEnum.Xbox) {
+                                            int dLen = outLen;
+                                            DataUtils.DecompressLZX(rawData, out contentToWrite, ref dLen);
+                                        } else
+                                            contentToWrite = DataUtils.DecompressDeflate(rawData, outLen);
+                                    } catch { /* Decompress failed */ }
+                                }
+                                
+                                if (contentToWrite == null) contentToWrite = rawData; // Fallback to raw/clean if not compressed
+                            }
+
+                            if (contentToWrite != null && contentToWrite.Length > 0)
+                            {
+                                io.WriteBytes(contentToWrite);
+                                asFile.SizeInArchive = contentToWrite.Length;
+
+                                if (isResourcePath)
+                                {
+                                    if (asFile.FlagInfo.IsResource) 
+                                    {
+                                        asFile.FlagInfo.IsExtendedFlags = false;
+                                        asFile.FlagInfo.IsResource = true;
+                                        asFile.FlagInfo.IsCompressed = true; 
+                                        // Update Flag1 with RSC05 structure using stored sizes
+                                        asFile.FlagInfo.RSC05_SetMemSizes(resVSize, resPSize);
+                                    }
+                                }
+                                else
+                                {
+                                    // Generic Clean
+                                    asFile.FlagInfo.IsCompressed = false;
+                                    asFile.FlagInfo.IsExtendedFlags = false;
+                                    asFile.FlagInfo.IsResource = false;
+                                    // Update Flag1 to store uncompressed size (or generic file identifier)
+                                    asFile.FlagInfo.SetTotalSize(contentToWrite.Length, 0);
+                                }
+                                processed = true;
+                            }
+                        }
+                        catch
+                        {
+                            processed = false;
+                        }
+                    }
+
+                    if (!processed)
+                    {
+                        // Rollback
+                        asFile.FlagInfo.Flag1 = originalFlag1;
+                        asFile.FlagInfo.Flag2 = originalFlag2;
+                        asFile.SizeInArchive = (int)originalSize;
+
+                        long r = asFile.GetOffset();
+                        RPFIO.Position = r;
+                        asFile.SetOffset(io.Position);
+                        RPFIO.BufferCopy(io.BaseStream, (uint)asFile.SizeInArchive, 262144U);
+                    }
                 }
 
                 foreach (RPF6TOC.TOCSuperEntry writeAfterChild in super.WriteAfterChildren)

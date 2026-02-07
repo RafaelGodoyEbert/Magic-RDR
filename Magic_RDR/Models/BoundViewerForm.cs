@@ -84,6 +84,56 @@ namespace Magic_RDR.Models
                 box.Margin = new Padding(10, 5, 0, 5);
                 panel1.Controls.Add(box);
             }
+            SetTheme();
+        }
+
+        [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+
+        private void SetTheme()
+        {
+            if (RPF6FileNameHandler.DarkMode)
+            {
+                this.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+                this.ForeColor = System.Drawing.Color.White;
+                
+                splitContainer1.Panel1.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+                splitContainer1.Panel2.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+
+                panel1.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+                panel1.ForeColor = System.Drawing.Color.White;
+
+                saveButton.BackColor = System.Drawing.Color.FromArgb(60, 60, 60);
+                saveButton.ForeColor = System.Drawing.Color.White;
+                saveButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+                saveButton.FlatAppearance.BorderSize = 0;
+
+                verticeCountLabel.ForeColor = System.Drawing.Color.White;
+                polygonCountLabel.ForeColor = System.Drawing.Color.White;
+                
+                ApplyThemeToControls(panel1.Controls);
+
+                int useImmersiveDarkMode = 1;
+                DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useImmersiveDarkMode, sizeof(int));
+            }
+        }
+
+        private void ApplyThemeToControls(Control.ControlCollection controls)
+        {
+            foreach (Control control in controls)
+            {
+                 if (control is CheckBox checkBox)
+                 {
+                     checkBox.ForeColor = System.Drawing.Color.White;
+                     checkBox.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+                 }
+                 
+                 if (control.HasChildren)
+                 {
+                     ApplyThemeToControls(control.Controls);
+                 }
+            }
         }
 
         private void GeometryCheckBox_Checked(object sender, EventArgs e)

@@ -546,6 +546,7 @@ namespace Magic_RDR
             this.listView.ContextMenuStrip = this.fileOptions;
             this.listView.Cursor = System.Windows.Forms.Cursors.Arrow;
             this.listView.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.listView.OwnerDraw = false;
             this.listView.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.listView.FullRowSelect = true;
             this.listView.HideSelection = false;

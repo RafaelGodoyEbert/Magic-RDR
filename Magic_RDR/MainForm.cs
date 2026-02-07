@@ -30,6 +30,7 @@ namespace Magic_RDR
             if (rpfPath == string.Empty)
             {
                 InitializeComponent();
+                SetTheme();
                 var lviSorter = new ListViewColumnSorter();
                 lviSorter.SortOrder = Sorting;
                 switch (SortColumn)
@@ -272,6 +273,12 @@ namespace Magic_RDR
                     item.ImageIndex = 5;
                     break;
             }
+
+            if (RPF6FileNameHandler.DarkMode)
+            {
+                item.BackColor = Color.FromArgb(30, 30, 30);
+                item.ForeColor = Color.White;
+            }
         }
 
         public void LoadDirectory(TOCSuperEntry super, bool firstTime = false)
@@ -507,6 +514,7 @@ namespace Magic_RDR
 
         private void SaveRPF(Stream xOut)
         {
+            CurrentRPF.Header.Encrypted = RPF6FileNameHandler.EncryptTOC;
             NewWorkForm newWorkForm = new NewWorkForm(xOut, CurrentRPF);
 
             if (!newWorkForm.Done)
@@ -743,7 +751,6 @@ namespace Magic_RDR
 
         private void createDirectoryButton_Click(object sender, EventArgs e)
         {
-            List<TOCSuperEntry> allChildren = CurrentDirectory.AllChildren;
             NameDirectoryForm nameDirectoryForm = new NameDirectoryForm();
             nameDirectoryForm.ShowDialog();
 
@@ -752,37 +759,66 @@ namespace Magic_RDR
                 return;
             }
 
-            uint newDirHash = DataUtils.GetHash(nameDirectoryForm.NewDirectoryName);
-            if (allChildren.Count(x => (int)x.Entry.NameOffset == (int)newDirHash) == 0)
+            string inputPath = nameDirectoryForm.NewDirectoryName.Replace("\\", "/");
+            string[] directories = inputPath.Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+
+            TOCSuperEntry currentContext = CurrentDirectory;
+
+            foreach (string dirName in directories)
             {
-                AddName(nameDirectoryForm.NewDirectoryName);
-                SaveNames();
+                uint dirHash = DataUtils.GetHash(dirName);
+                TOCSuperEntry existingChild = currentContext.AllChildren.FirstOrDefault(x => (int)x.Entry.NameOffset == (int)dirHash && !x.Entry.IsFile);
 
-                TOCSuperEntry child = new TOCSuperEntry
+                if (existingChild == null)
                 {
-                    SuperParent = CurrentDirectory
-                };
-                TOCSuperEntry tocSuperEntry = child;
-                DirectoryEntry directoryEntry = new DirectoryEntry
-                {
-                    Name = nameDirectoryForm.NewDirectoryName,
-                    Parent = CurrentDirectory.Entry.AsDirectory
-                };
-                tocSuperEntry.Entry = directoryEntry;
-                CurrentRPF.TOC.SuperEntries.Add(tocSuperEntry);
-                CurrentRPF.Header.DirectoryCount++; //Have to make sure this doesn't interferate when saving
-                CurrentDirectory.AddChild(child);
-                LoadDirectory(CurrentDirectory);
+                    // Create new directory
+                    AddName(dirName);
+                    SaveNames();
 
-                if (CurrentDirectory.Entry.Name != "root")
-                    SearchAndAdd(CurrentDirectory.Entry.GetPath() + "/" + nameDirectoryForm.NewDirectoryName, nameDirectoryForm.NewDirectoryName, CurrentDirectory.Entry.GetPath(), child);
+                    TOCSuperEntry child = new TOCSuperEntry
+                    {
+                        SuperParent = currentContext
+                    };
+                    
+                    DirectoryEntry directoryEntry = new DirectoryEntry
+                    {
+                        Name = dirName,
+                        Parent = currentContext.Entry.AsDirectory
+                    };
+                    
+                    child.Entry = directoryEntry;
+                    CurrentRPF.TOC.SuperEntries.Add(child);
+                    CurrentRPF.Header.DirectoryCount++; 
+                    currentContext.AddChild(child);
+
+                    // Update TreeView
+                    string newPath = currentContext.Entry.Name == "root" && currentContext.Entry.Parent == null
+                        ? "root/" + dirName // Or just confirm how root path is handled. Usually root is key "root"
+                        : currentContext.Entry.GetPath() + "/" + dirName;
+                    
+                    // Fix path consistency if generic GetPath() behaves differently
+                    if (currentContext.Entry.Name == "root" && currentContext.Entry.Parent == null)
+                    {
+                         // Special handling if GetPath() returns empty for root or similar
+                         // Assuming GetPath() works, but let's stick to the previous logic style
+                         SearchAndAdd(currentContext.Entry.GetPath() + "/" + dirName, dirName, "root", child);
+                    }
+                    else
+                    {
+                        SearchAndAdd(currentContext.Entry.GetPath() + "/" + dirName, dirName, currentContext.Entry.GetPath(), child);
+                    }
+
+                    currentContext = child;
+                }
                 else
-                    SearchAndAdd(CurrentDirectory.Entry.GetPath() + "/" + nameDirectoryForm.NewDirectoryName, nameDirectoryForm.NewDirectoryName, "root", child);
+                {
+                    // Directory already exists, navigate into it
+                    currentContext = existingChild;
+                }
             }
-            else
-            {
-                MessageBox.Show(string.Format("A directory with this name ({0}) already exists.", nameDirectoryForm.NewDirectoryName), "Error", MessageBoxButtons.OK, MessageBoxIcon.Hand);
-            }
+
+            LoadDirectory(CurrentDirectory);
+            MessageBox.Show("Directory structure created successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void viewFilePropertiesButton_Click(object sender, EventArgs e)
@@ -1277,8 +1313,11 @@ namespace Magic_RDR
                     }
                     else data = RPFFile.RPFIO.ReadBytes(file.SizeInArchive);
 
-                    TextViewerForm textViewer = new TextViewerForm(tag, data);
-                    textViewer.ShowDialog();
+                    if (data != null)
+                    {
+                        TextViewerForm textViewer = new TextViewerForm(tag, data);
+                        textViewer.ShowDialog();
+                    }
 
                     if (HasJustEditedRegularFile)
                     {
@@ -1508,8 +1547,16 @@ namespace Magic_RDR
                 }
 
                 //Restore the original appearance of the item.
-                item.BackColor = SystemColors.Control;
-                item.ForeColor = Color.Black;
+                if (RPF6FileNameHandler.DarkMode)
+                {
+                    item.BackColor = Color.FromArgb(30, 30, 30);
+                    item.ForeColor = Color.White;
+                }
+                else
+                {
+                    item.BackColor = SystemColors.Control;
+                    item.ForeColor = Color.Black;
+                }
             }
         }
 
@@ -1592,6 +1639,248 @@ namespace Magic_RDR
                 return;
             else
                 this.LoadRPF(CurrentRPFFileName, true);
+        }
+
+        [System.Runtime.InteropServices.DllImport("uxtheme.dll", ExactSpelling = true, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+        public static extern int SetWindowTheme(IntPtr hWnd, string pszSubAppName, string pszSubIdList);
+
+        [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 = 19;
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+
+        private void SetTheme()
+        {
+            if (RPF6FileNameHandler.DarkMode)
+            {
+                this.BackColor = Color.FromArgb(45, 45, 48);
+                this.ForeColor = Color.White;
+                ApplyThemeToControls(this.Controls, true);
+                
+                // Special handling for MenuStrip to remove white borders/gradients
+                menuStrip.Renderer = new DarkThemeRenderer();
+                fileOptions.Renderer = new DarkThemeRenderer();
+                
+                // Dark Scrollbars attempt
+                SetWindowTheme(treeView.Handle, "DarkMode_Explorer", null);
+                SetWindowTheme(listView.Handle, "DarkMode_Explorer", null);
+
+                // Enable Dark Title Bar (Windows 10/11)
+                int useImmersiveDarkMode = 1;
+                DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useImmersiveDarkMode, sizeof(int));
+                
+                // Handle ListView Resize to eliminate white header space
+                listView.Resize -= ListView_Resize;
+                listView.Resize += ListView_Resize;
+                // Force initial resize
+                ListView_Resize(listView, EventArgs.Empty);
+            }
+        }
+
+        private void ListView_Resize(object sender, EventArgs e)
+        {
+            // Auto-resize the LAST column in the view to fill the space
+            // Note: The visual order depends on DisplayIndex, but we usually just resize the last logical column 
+            // OR the one that makes sense (Size/Name).
+            // Here we just resize the last one in the collection as it's typically the right-most.
+            if (listView.Columns.Count > 0)
+            {
+                int totalWidth = 0;
+                // Sum width of all columns EXCEPT the last one
+                for (int i = 0; i < listView.Columns.Count - 1; i++)
+                {
+                    totalWidth += listView.Columns[i].Width;
+                }
+                
+                // Calculate remaining space
+                int remaining = listView.ClientSize.Width - totalWidth;
+                
+                // Apply ONLY if it makes sense (don't shrink too small)
+                if (remaining > 100) 
+                {
+                    listView.Columns[listView.Columns.Count - 1].Width = remaining - 4; // -4 for margin safety
+                }
+            }
+        }
+
+        private void ApplyThemeToControls(Control.ControlCollection controls, bool dark)
+        {
+            foreach (Control control in controls)
+            {
+                if (control is MenuStrip menuStrip)
+                {
+                    menuStrip.BackColor = Color.FromArgb(45, 45, 48);
+                    menuStrip.ForeColor = Color.White;
+                    foreach (ToolStripItem item in menuStrip.Items)
+                    {
+                        item.BackColor = Color.FromArgb(45, 45, 48);
+                        item.ForeColor = Color.White;
+                        if (item is ToolStripMenuItem menuItem)
+                        {
+                            foreach (ToolStripItem dropDownItem in menuItem.DropDownItems)
+                            {
+                                dropDownItem.BackColor = Color.FromArgb(45, 45, 48);
+                                dropDownItem.ForeColor = Color.White;
+                            }
+                        }
+                    }
+                }
+                else if (control is StatusStrip statusStrip)
+                {
+                    statusStrip.BackColor = Color.FromArgb(43, 43, 43); // Dark Grey instead of Blue
+                    statusStrip.ForeColor = Color.White;
+                    foreach (ToolStripItem item in statusStrip.Items)
+                    {
+                        item.BackColor = Color.FromArgb(43, 43, 43);
+                        item.ForeColor = Color.White;
+                    }
+                }
+                else if (control is TextBox textBox)
+                {
+                    if (dark)
+                    {
+                        textBox.BackColor = Color.FromArgb(30, 30, 30);
+                        textBox.ForeColor = Color.White;
+                        textBox.BorderStyle = BorderStyle.FixedSingle;
+                    }
+                    else
+                    {
+                        textBox.BackColor = SystemColors.Window;
+                        textBox.ForeColor = SystemColors.WindowText;
+                        textBox.BorderStyle = BorderStyle.Fixed3D;
+                    }
+                }
+                else if (control is ListView listView)
+                {
+                    if (dark)
+                    {
+                        listView.BackColor = Color.FromArgb(30, 30, 30);
+                        listView.ForeColor = Color.White;
+                        listView.OwnerDraw = true;
+                        
+                        listView.DrawColumnHeader += (sender, headerScore) =>
+                        {
+                            headerScore.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(45, 45, 48)), headerScore.Bounds);
+                            headerScore.Graphics.DrawRectangle(new Pen(Color.FromArgb(60, 60, 60)), headerScore.Bounds);
+                            TextRenderer.DrawText(headerScore.Graphics, listView.Columns[headerScore.ColumnIndex].Text, listView.Font, headerScore.Bounds, Color.White, TextFormatFlags.VerticalCenter | TextFormatFlags.Left);
+                        };
+                        
+                        // Fix for the white space to the right of columns:
+                        // WinForms ListView doesn't expose a simple way to paint the 'empty' header space.
+                        // However, since we are doing OwnerDraw, the main background is handled.
+                        // The 'header' background for the empty space remains system default.
+                        // One workaround is to change the Container color, but ListView header is a child.
+                        // For now, ensuring the main list background is dark is the priority.
+                        // (We partly fixed background by enabling WM_ERASEBKGND in ListViewNF)
+
+                        listView.DrawItem += (sender, itemScore) => 
+                        {
+                            // Custom draw item to control selection color
+                            if (itemScore.Item.Selected)
+                            {
+                                itemScore.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(60, 60, 60)), itemScore.Bounds);
+                            }
+                            else
+                            {
+                                itemScore.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(30, 30, 30)), itemScore.Bounds);
+                            }
+                            // We don't draw text here, DrawSubItem handles it usually, or we let default handle the rest if possible.
+                            // However, ListView 'Details' view uses DrawSubItem.
+                        };
+
+                        listView.DrawSubItem += (sender, subItemScore) => 
+                        { 
+                            if (subItemScore.Item.Selected) 
+                            {
+                                subItemScore.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(70, 70, 70)), subItemScore.Bounds);
+                            }
+                            else
+                            {
+                                subItemScore.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(30, 30, 30)), subItemScore.Bounds);
+                            }
+
+                            var textBrush = Brushes.White;
+                            // Draw image if it's the first column
+                            if (subItemScore.ColumnIndex == 0)
+                            {
+                                if (listView.SmallImageList != null && subItemScore.Item.ImageIndex >= 0 && subItemScore.Item.ImageIndex < listView.SmallImageList.Images.Count)
+                                {
+                                    Image img = listView.SmallImageList.Images[subItemScore.Item.ImageIndex];
+                                    subItemScore.Graphics.DrawImage(img, subItemScore.Bounds.Left + 2, subItemScore.Bounds.Top + (subItemScore.Bounds.Height - img.Height) / 2);
+                                }
+                                TextRenderer.DrawText(subItemScore.Graphics, subItemScore.Item.Text, listView.Font, new Rectangle(subItemScore.Bounds.Left + 20, subItemScore.Bounds.Top, subItemScore.Bounds.Width - 20, subItemScore.Bounds.Height), Color.White, TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+                            }
+                            else
+                            {
+                                TextRenderer.DrawText(subItemScore.Graphics, subItemScore.SubItem.Text, listView.Font, subItemScore.Bounds, Color.White, TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+                            }
+                        };
+                    }
+                    else
+                    {
+                        listView.BackColor = SystemColors.Window;
+                        listView.ForeColor = SystemColors.WindowText;
+                        listView.OwnerDraw = false;
+                        // Events will still be attached but OwnerDraw=false disables them. 
+                        // Cleaning up events is harder with anonymous delegates, but OwnerDraw=false is sufficient.
+                    }
+                }
+                else if (control is TreeView treeView)
+                {
+                    if (dark)
+                    {
+                        treeView.BackColor = Color.FromArgb(30, 30, 30);
+                        treeView.ForeColor = Color.White;
+                        treeView.LineColor = Color.White;
+                    }
+                    else
+                    {
+                        treeView.BackColor = SystemColors.Window;
+                        treeView.ForeColor = SystemColors.WindowText;
+                        treeView.LineColor = SystemColors.WindowText; // Or default
+                    }
+                }
+                else if (control is Button button)
+                {
+                    button.BackColor = dark ? Color.FromArgb(60, 60, 60) : SystemColors.ButtonFace;
+                    button.ForeColor = dark ? Color.White : SystemColors.ControlText;
+                    button.FlatStyle = FlatStyle.Flat;
+                    button.FlatAppearance.BorderColor = Color.FromArgb(100, 100, 100);
+                }
+                else if (control is SplitContainer split)
+                {
+                    split.BackColor = dark ? Color.FromArgb(45, 45, 48) : SystemColors.Control;
+                    ApplyThemeToControls(split.Panel1.Controls, dark);
+                    ApplyThemeToControls(split.Panel2.Controls, dark);
+                    continue; // Recursion handled
+                }
+
+                if (control.HasChildren)
+                {
+                    ApplyThemeToControls(control.Controls, dark);
+                }
+            }
+        }
+
+        private class DarkThemeRenderer : ToolStripProfessionalRenderer
+        {
+            public DarkThemeRenderer() : base(new DarkThemeColorTable()) { }
+        }
+
+        private class DarkThemeColorTable : ProfessionalColorTable
+        {
+            public override Color MenuItemSelected => Color.FromArgb(60, 60, 60);
+            public override Color MenuItemSelectedGradientBegin => Color.FromArgb(60, 60, 60);
+            public override Color MenuItemSelectedGradientEnd => Color.FromArgb(60, 60, 60);
+            public override Color MenuBorder => Color.FromArgb(45, 45, 48);
+            public override Color MenuItemBorder => Color.FromArgb(60, 60, 60);
+            public override Color MenuItemPressedGradientBegin => Color.FromArgb(45, 45, 48);
+            public override Color MenuItemPressedGradientEnd => Color.FromArgb(45, 45, 48);
+            public override Color ToolStripDropDownBackground => Color.FromArgb(45, 45, 48);
+            public override Color ImageMarginGradientBegin => Color.FromArgb(45, 45, 48);
+            public override Color ImageMarginGradientMiddle => Color.FromArgb(45, 45, 48);
+            public override Color ImageMarginGradientEnd => Color.FromArgb(45, 45, 48);
         }
     }
 }

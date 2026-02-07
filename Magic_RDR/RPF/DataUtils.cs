@@ -124,16 +124,22 @@ namespace Magic_RDR
 
         public static byte[] DecompressZStandard(byte[] compressedData)
         {
-            byte[] decompressedData = null;
-
-            using (var memoryStream = new MemoryStream(compressedData))
-            using (var compressionStream = new ZstandardStream(memoryStream, CompressionMode.Decompress))
-            using (var temp = new MemoryStream())
+            try
             {
-                compressionStream.CopyTo(temp);
-                decompressedData = temp.ToArray();
+                using (var memoryStream = new MemoryStream(compressedData))
+                using (var compressionStream = new ZstandardStream(memoryStream, CompressionMode.Decompress))
+                using (var temp = new MemoryStream())
+                {
+                    compressionStream.CopyTo(temp);
+                    return temp.ToArray();
+                }
             }
-            return decompressedData;
+            catch (Exception)
+            {
+                // If decompression fails (e.g. "Unknown frame descriptor"), assume data matches the "IsCompressed" flag incorrectly
+                // and return the original data.
+                return compressedData;
+            }
         }
 
         public static byte[] CompressZStandard(byte[] decompressedData)

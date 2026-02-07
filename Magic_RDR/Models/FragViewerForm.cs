@@ -67,6 +67,150 @@ namespace Magic_RDR
                 FragDrawableData = new FragDrawable(Reader, file);
 
             UpdateTabControls(FragTypeData, FragDrawableData);
+            SetTheme();
+        }
+
+        [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+        [System.Runtime.InteropServices.DllImport("uxtheme.dll", ExactSpelling = true, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+        private static extern int SetWindowTheme(IntPtr hWnd, string pszSubAppName, string pszSubIdList);
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+
+        private void SetTheme()
+        {
+            if (RPF6FileNameHandler.DarkMode)
+            {
+                this.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+                this.ForeColor = System.Drawing.Color.White;
+
+                tabControl.DrawMode = TabDrawMode.OwnerDrawFixed;
+                tabControl.DrawItem -= TabControl_DrawItem;
+                tabControl.DrawItem += TabControl_DrawItem;
+                
+                listViewTextures.BackColor = System.Drawing.Color.FromArgb(30, 30, 30);
+                listViewTextures.ForeColor = System.Drawing.Color.White;
+                listViewTextures.OwnerDraw = true;
+                SetWindowTheme(listViewTextures.Handle, "DarkMode_Explorer", null);
+                listViewTextures.DrawColumnHeader += ListView_DrawColumnHeader;
+                listViewTextures.DrawItem += ListView_DrawItem;
+                listViewTextures.DrawSubItem += ListView_DrawSubItem;
+                
+                listViewSkeleton.BackColor = System.Drawing.Color.FromArgb(30, 30, 30);
+                listViewSkeleton.ForeColor = System.Drawing.Color.White;
+                listViewSkeleton.OwnerDraw = true;
+                SetWindowTheme(listViewSkeleton.Handle, "DarkMode_Explorer", null);
+                listViewSkeleton.DrawColumnHeader += ListView_DrawColumnHeader;
+                listViewSkeleton.DrawItem += ListView_DrawItem;
+                listViewSkeleton.DrawSubItem += ListView_DrawSubItem;
+
+                ApplyThemeToControls(this.Controls);
+
+                int useImmersiveDarkMode = 1;
+                DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useImmersiveDarkMode, sizeof(int));
+            }
+        }
+
+        private void TabControl_DrawItem(object sender, DrawItemEventArgs e)
+        {
+            TabControl tc = sender as TabControl;
+            if (tc == null) return;
+            TabPage page = tc.TabPages[e.Index];
+            e.Graphics.FillRectangle(new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(45, 45, 48)), e.Bounds);
+            System.Drawing.Rectangle paddedBounds = e.Bounds;
+            int yOffset = (e.State == DrawItemState.Selected) ? -2 : 1;
+            paddedBounds.Offset(1, yOffset);
+            TextRenderer.DrawText(e.Graphics, page.Text, tc.Font, paddedBounds, System.Drawing.Color.White);
+        }
+
+        private void ListView_DrawColumnHeader(object sender, DrawListViewColumnHeaderEventArgs e)
+        {
+            e.Graphics.FillRectangle(new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(45, 45, 48)), e.Bounds);
+            e.Graphics.DrawRectangle(new System.Drawing.Pen(System.Drawing.Color.FromArgb(60, 60, 60)), e.Bounds);
+            TextRenderer.DrawText(e.Graphics, e.Header.Text, ((ListView)sender).Font, e.Bounds, System.Drawing.Color.White, TextFormatFlags.VerticalCenter | TextFormatFlags.Left);
+        }
+
+        private void ListView_DrawItem(object sender, DrawListViewItemEventArgs e)
+        {
+            if (e.Item.Selected) e.Graphics.FillRectangle(new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(60, 60, 60)), e.Bounds);
+            else e.Graphics.FillRectangle(new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(30, 30, 30)), e.Bounds);
+            e.DrawText();
+        }
+
+        private void ListView_DrawSubItem(object sender, DrawListViewSubItemEventArgs e)
+        {
+             if (e.Item.Selected) e.Graphics.FillRectangle(new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(60, 60, 60)), e.Bounds);
+             else e.Graphics.FillRectangle(new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(30, 30, 30)), e.Bounds);
+             
+             // Explicitly draw text
+             TextFormatFlags flags = TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis;
+             TextRenderer.DrawText(e.Graphics, e.SubItem.Text, e.Item.ListView.Font, e.Bounds, System.Drawing.Color.White, flags);
+        }
+
+        private void ApplyThemeToControls(Control.ControlCollection controls)
+        {
+             foreach (Control control in controls)
+             {
+                 if (control is TabPage tabPage)
+                 {
+                     tabPage.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+                     tabPage.ForeColor = System.Drawing.Color.White;
+                 }
+                 else if (control is ToolStrip toolStrip)
+                 {
+                     toolStrip.Renderer = new DarkThemeRenderer();
+                     toolStrip.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+                     toolStrip.ForeColor = System.Drawing.Color.White;
+                 }
+                 else if (control is CheckBox box)
+                 {
+                     box.ForeColor = System.Drawing.Color.White;
+                     box.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+                 }
+                 else if (control is ComboBox combo)
+                 {
+                     combo.BackColor = System.Drawing.Color.FromArgb(30, 30, 30);
+                     combo.ForeColor = System.Drawing.Color.White;
+                     combo.FlatStyle = FlatStyle.Flat;
+                 }
+                 else if (control is Panel panel)
+                 {
+                     panel.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+                     panel.ForeColor = System.Drawing.Color.White;
+                 }
+                 else if (control is Label label)
+                 {
+                     label.ForeColor = System.Drawing.Color.White;
+                 }
+
+                 if (control.HasChildren) ApplyThemeToControls(control.Controls);
+             }
+        }
+
+        private class DarkThemeRenderer : ToolStripProfessionalRenderer
+        {
+            public DarkThemeRenderer() : base(new DarkThemeColorTable()) { }
+        }
+
+        private class DarkThemeColorTable : ProfessionalColorTable
+        {
+            public override System.Drawing.Color MenuItemSelected => System.Drawing.Color.FromArgb(60, 60, 60);
+            public override System.Drawing.Color MenuItemSelectedGradientBegin => System.Drawing.Color.FromArgb(60, 60, 60);
+            public override System.Drawing.Color MenuItemSelectedGradientEnd => System.Drawing.Color.FromArgb(60, 60, 60);
+            public override System.Drawing.Color MenuBorder => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color MenuItemBorder => System.Drawing.Color.FromArgb(60, 60, 60);
+            public override System.Drawing.Color MenuItemPressedGradientBegin => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color MenuItemPressedGradientEnd => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color ToolStripDropDownBackground => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color ImageMarginGradientBegin => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color ImageMarginGradientMiddle => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color ImageMarginGradientEnd => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color ButtonSelectedHighlight => System.Drawing.Color.FromArgb(60, 60, 60);
+            public override System.Drawing.Color ButtonSelectedGradientBegin => System.Drawing.Color.FromArgb(60, 60, 60);
+            public override System.Drawing.Color ButtonSelectedGradientEnd => System.Drawing.Color.FromArgb(60, 60, 60);
+            public override System.Drawing.Color ButtonPressedGradientBegin => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color ButtonPressedGradientEnd => System.Drawing.Color.FromArgb(45, 45, 48);
+            public override System.Drawing.Color ButtonSelectedBorder => System.Drawing.Color.FromArgb(60, 60, 60);
+            public override System.Drawing.Color ToolStripBorder => System.Drawing.Color.FromArgb(45, 45, 48);
         }
 
         private void UpdateTabControls(FragType frag, FragDrawable drawable)
@@ -1323,6 +1467,9 @@ namespace Magic_RDR
 
             public void XFD_ReadSkeletonData()
             {
+                if (SkeletonPointer <= 0)
+                    return;
+
                 Reader.BaseStream.Seek(SkeletonPointer, SeekOrigin.Begin);
                 BoneInfoPointer = Reader.ReadOffset(Reader.ReadInt32());
                 int ParentIndices = Reader.ReadOffset(Reader.ReadInt32());
@@ -1345,6 +1492,15 @@ namespace Magic_RDR
 
             public void XFD_ReadBoneData()
             {
+                if (BoneInfoPointer <= 0)
+                {
+                    BoneNames = new string[0];
+                    BoneFileOffset = new int[0];
+                    BoneParentOffset = new int[0];
+                    BonePositions = new Vector4[0];
+                    return;
+                }
+
                 BoneNames = new string[BoneCount];
                 BoneFileOffset = new int[BoneCount];
                 BoneParentOffset = new int[BoneCount];
@@ -1420,6 +1576,8 @@ namespace Magic_RDR
                     {
                         CurrentModelMeshPointer[i] = Reader.ReadOffset(Reader.ReadInt32());
                     }
+
+                    if (CurrentModelMeshPointer.Length == 0) continue;
 
                     for (uint modelMesh = 0; modelMesh < CurrentModelMesh.Count; modelMesh++)
                     {

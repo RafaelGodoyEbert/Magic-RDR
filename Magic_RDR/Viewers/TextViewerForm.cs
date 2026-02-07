@@ -10,12 +10,17 @@ using System.Media;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Windows.Forms;
 using System.Xml;
+using System.Runtime.InteropServices;
 
 namespace Magic_RDR
 {
     public partial class TextViewerForm : Form
     {
+        [DllImport("uxtheme.dll", ExactSpelling = true, CharSet = CharSet.Unicode)]
+        public static extern int SetWindowTheme(IntPtr hWnd, string pszSubAppName, string pszSubIdList);
+
         public RPF6.RPF6TOC.TOCSuperEntry Entry;
         public byte[] FileData;
         private string OriginalFileContent;
@@ -33,6 +38,140 @@ namespace Magic_RDR
 
             charCountLabel.Text = string.Format("{0} characters, {1} lines", textBox.Text.Length, textBox.LinesCount);
             zoomLabel.Text = string.Format("Zoom {0}%", textBox.Zoom);
+            SetTheme();
+        }
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+
+        private void SetTheme()
+        {
+            if (RPF6FileNameHandler.DarkMode)
+            {
+                this.BackColor = Color.FromArgb(45, 45, 48);
+                this.ForeColor = Color.White;
+                ApplyThemeToControls(this.Controls);
+
+                // Enable Dark Title Bar
+                int useImmersiveDarkMode = 1;
+                DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useImmersiveDarkMode, sizeof(int));
+            }
+        }
+
+        private void ApplyThemeToControls(Control.ControlCollection controls)
+        {
+            foreach (Control control in controls)
+            {
+                if (control is MenuStrip menuStrip)
+                {
+                    menuStrip.BackColor = Color.FromArgb(45, 45, 48);
+                    menuStrip.ForeColor = Color.White;
+                    menuStrip.Renderer = new DarkThemeRenderer();
+                    foreach (ToolStripItem item in menuStrip.Items)
+                    {
+                        item.BackColor = Color.FromArgb(45, 45, 48);
+                        item.ForeColor = Color.White;
+                    }
+                }
+                else if (control is ToolStrip toolStrip)
+                {
+                    toolStrip.BackColor = Color.FromArgb(45, 45, 48);
+                    toolStrip.ForeColor = Color.White;
+                    toolStrip.Renderer = new DarkThemeRenderer();
+                    foreach (ToolStripItem item in toolStrip.Items)
+                    {
+                        item.BackColor = Color.FromArgb(45, 45, 48);
+                        item.ForeColor = Color.White;
+                    }
+                }
+                else if (control is FastColoredTextBoxNS.FastColoredTextBox fctb)
+                {
+                    // Softer background for better contrast
+                    fctb.BackColor = Color.FromArgb(30, 30, 30);
+                    fctb.ForeColor = Color.FromArgb(220, 220, 220); // Off-white text
+
+                    // Gutter styling
+                    fctb.IndentBackColor = Color.FromArgb(40, 40, 42);
+                    fctb.LineNumberColor = Color.FromArgb(100, 100, 100);
+                    
+                    // Selection and Current Line
+                    fctb.SelectionColor = Color.FromArgb(60, 0, 122, 204); // VS-style selection blue
+                    fctb.CurrentLineColor = Color.FromArgb(40, 255, 255, 255); // Subtle highlighting
+
+                    // Apply Scrollbar Theme
+                    SetWindowTheme(fctb.Handle, "DarkMode_Explorer", null);
+
+                    // ... (previous simple styles)
+                    
+                    // Manually override XML styles using the SyntaxHighlighter if possible, 
+                    // or just creating new styles.
+                    // Since we can't easily access the internal default styles, we'll try to apply a custom one if Language is XML.
+                    if (fctb.Language == FastColoredTextBoxNS.Language.XML)
+                    {
+                        // Create readable styles for Dark Mode
+                        FastColoredTextBoxNS.TextStyle tagStyle = new FastColoredTextBoxNS.TextStyle(Brushes.DodgerBlue, null, FontStyle.Regular);
+                        FastColoredTextBoxNS.TextStyle attrNameStyle = new FastColoredTextBoxNS.TextStyle(Brushes.LightSkyBlue, null, FontStyle.Regular);
+                        FastColoredTextBoxNS.TextStyle attrValueStyle = new FastColoredTextBoxNS.TextStyle(Brushes.LightSalmon, null, FontStyle.Regular);
+                        FastColoredTextBoxNS.TextStyle commentStyle = new FastColoredTextBoxNS.TextStyle(Brushes.LightGreen, null, FontStyle.Italic); // Green for comments
+                        
+                        // We need to apply these. FCTB doesn't expose a simple "SetStyle" for language.
+                        // We would typically clear styles and re-add regex.
+                        // But simply setting the default style handles non-matched text.
+                        // The user complaint is likely about the default "Blue" for tags being too dark.
+                        
+                        // Let's try to update the syntax highlighter by recreating it or accessing properties if public.
+                        // Assuming standard FCTB usage:
+                        fctb.SyntaxHighlighter.AttributeValueStyle = attrValueStyle;
+                        fctb.SyntaxHighlighter.AttributeStyle = attrNameStyle;
+                        fctb.SyntaxHighlighter.TagBracketStyle = tagStyle;
+                        fctb.SyntaxHighlighter.TagNameStyle = tagStyle;
+                        fctb.SyntaxHighlighter.CommentStyle = commentStyle;
+                    }
+                }
+                else if (control is StatusStrip statusStrip)
+                {
+                    statusStrip.BackColor = Color.FromArgb(43, 43, 43);
+                    statusStrip.ForeColor = Color.White;
+                    foreach (ToolStripItem item in statusStrip.Items)
+                    {
+                        item.BackColor = Color.FromArgb(43, 43, 43);
+                        item.ForeColor = Color.White;
+                    }
+                }
+
+                if (control.HasChildren)
+                {
+                    ApplyThemeToControls(control.Controls);
+                }
+            }
+        }
+
+        private class DarkThemeRenderer : ToolStripProfessionalRenderer
+        {
+            public DarkThemeRenderer() : base(new DarkThemeColorTable()) { }
+        }
+
+        private class DarkThemeColorTable : ProfessionalColorTable
+        {
+            public override Color MenuItemSelected => Color.FromArgb(60, 60, 60);
+            public override Color MenuItemSelectedGradientBegin => Color.FromArgb(60, 60, 60);
+            public override Color MenuItemSelectedGradientEnd => Color.FromArgb(60, 60, 60);
+            public override Color MenuBorder => Color.FromArgb(45, 45, 48);
+            public override Color MenuItemBorder => Color.FromArgb(60, 60, 60);
+            public override Color MenuItemPressedGradientBegin => Color.FromArgb(45, 45, 48);
+            public override Color MenuItemPressedGradientEnd => Color.FromArgb(45, 45, 48);
+            public override Color ToolStripDropDownBackground => Color.FromArgb(45, 45, 48);
+            public override Color ImageMarginGradientBegin => Color.FromArgb(45, 45, 48);
+            public override Color ImageMarginGradientMiddle => Color.FromArgb(45, 45, 48);
+            public override Color ImageMarginGradientEnd => Color.FromArgb(45, 45, 48);
+            public override Color ButtonSelectedHighlight => Color.FromArgb(60, 60, 60);
+            public override Color ButtonSelectedGradientBegin => Color.FromArgb(60, 60, 60);
+            public override Color ButtonSelectedGradientEnd => Color.FromArgb(60, 60, 60);
+            public override Color ButtonPressedGradientBegin => Color.FromArgb(45, 45, 48);
+            public override Color ButtonPressedGradientEnd => Color.FromArgb(45, 45, 48);
+            public override Color ButtonSelectedBorder => Color.FromArgb(60, 60, 60);
         }
 
         private void exportButton_Click(object sender, EventArgs e)

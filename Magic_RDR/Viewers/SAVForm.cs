@@ -54,6 +54,34 @@ namespace Magic_RDR.Viewers
                 this.languageComboBox.SelectedIndex = languageIndex;
             }
             else throw new Exception("Corrupted file(s)...");
+            SetTheme();
+        }
+
+        [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+
+        private void SetTheme()
+        {
+            if (Magic_RDR.RPF.RPF6FileNameHandler.DarkMode)
+            {
+                this.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+                this.ForeColor = System.Drawing.Color.White;
+                
+                languageComboBox.BackColor = System.Drawing.Color.FromArgb(30,30,30);
+                languageComboBox.ForeColor = System.Drawing.Color.White;
+                languageComboBox.FlatStyle = FlatStyle.Flat;
+
+                saveButton.BackColor = System.Drawing.Color.FromArgb(60,60,60);
+                saveButton.ForeColor = System.Drawing.Color.White;
+                saveButton.FlatStyle = FlatStyle.Flat;
+                saveButton.FlatAppearance.BorderSize = 0;
+
+                currentLanguageLabel.ForeColor = System.Drawing.Color.White;
+
+                int useImmersiveDarkMode = 1;
+                DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useImmersiveDarkMode, sizeof(int));
+            }
         }
 
         private string GetLanguageFromLanguageHash()

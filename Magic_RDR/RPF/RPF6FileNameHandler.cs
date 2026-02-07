@@ -23,6 +23,9 @@ namespace Magic_RDR.RPF
         public static Color CustomColor2 { get; set; }
         public static System.Drawing.Color TextureBackgroundColor { get; set; }
         public static string SAVFilePath { get; set; }
+        public static bool EncryptTOC { get; set; }
+        public static bool EncryptData { get; set; }
+        public static bool DarkMode { get; set; }
 
         public static void LoadSettings(Stream settingsFile = null)
         {
@@ -48,6 +51,12 @@ namespace Magic_RDR.RPF
 
                 switch (settings)
                 {
+                     case "EncryptTOC":
+                        EncryptTOC = settingsValue != "False";
+                        break;
+                     case "EncryptData":
+                        EncryptData = settingsValue != "False";
+                        break;
                     case "RPFLoadLastRPF":
                         UseLastRPF = settingsValue != "False";
                         break;
@@ -137,6 +146,9 @@ namespace Magic_RDR.RPF
                     case "SAVFilePath":
                         SAVFilePath = settingsValue;
                         break;
+                    case "DarkMode":
+                        DarkMode = settingsValue != "False";
+                        break;
                     default:
                         break;
                 }
@@ -157,6 +169,9 @@ namespace Magic_RDR.RPF
             TextureBackgroundColor = System.Drawing.Color.Black;
             ImageSizeMode = PictureBoxSizeMode.AutoSize;
             SAVFilePath = "None";
+            EncryptTOC = true;
+            EncryptData = true;
+            DarkMode = true;
             SaveSettings();
         }
 
@@ -214,6 +229,8 @@ namespace Magic_RDR.RPF
             {
                 StreamWriter streamWriter = new StreamWriter(AppUtils.OpenFile("/Settings/Settings.txt", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.Read));
                 streamWriter.BaseStream.SetLength(0L);
+                streamWriter.WriteLine("EncryptTOC:" + EncryptTOC.ToString());
+                streamWriter.WriteLine("EncryptData:" + EncryptData.ToString());
                 streamWriter.WriteLine("RPFLoadLastRPF:" + UseLastRPF.ToString());
                 streamWriter.WriteLine("RPFLastRPFPath:" + LastRPFPath.ToString());
                 streamWriter.WriteLine("ListViewSorting:" + Sorting.ToString());
@@ -226,6 +243,7 @@ namespace Magic_RDR.RPF
                 streamWriter.WriteLine("TextureBackgroundColor:" + TextureBackgroundColor.ToString());
                 streamWriter.WriteLine("TextureImageSizeMode:" + ImageSizeMode.ToString());
                 streamWriter.WriteLine("SAVFilePath:" + SAVFilePath.ToString());
+                streamWriter.WriteLine("DarkMode:" + DarkMode.ToString());
                 streamWriter.Flush();
                 streamWriter.Close();
             }

@@ -292,6 +292,171 @@ namespace Magic_RDR.Viewers
             }
 
             #endregion
+            SetTheme();
+        }
+
+        [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+
+        private void SetTheme()
+        {
+            if (RPF6FileNameHandler.DarkMode)
+            {
+                this.BackColor = Color.FromArgb(45, 45, 48);
+                this.ForeColor = Color.White;
+                ApplyThemeToControls(this.Controls);
+
+                // Enable Dark Title Bar
+                int useImmersiveDarkMode = 1;
+                DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useImmersiveDarkMode, sizeof(int));
+                
+                // Handle ListView Resize
+                listView.Resize -= ListView_Resize;
+                listView.Resize += ListView_Resize;
+                ListView_Resize(listView, EventArgs.Empty);
+            }
+        }
+
+        private void ListView_Resize(object sender, EventArgs e)
+        {
+            ListView lv = sender as ListView;
+            if (lv == null || lv.Columns.Count == 0) return;
+
+            int totalWidth = 0;
+            for (int i = 0; i < lv.Columns.Count - 1; i++)
+            {
+                totalWidth += lv.Columns[i].Width;
+            }
+
+            int remaining = lv.ClientSize.Width - totalWidth;
+            if (remaining > 50) 
+            {
+                 lv.Columns[lv.Columns.Count - 1].Width = remaining - 4;
+            }
+        }
+
+        private void ApplyThemeToControls(Control.ControlCollection controls)
+        {
+            foreach (Control control in controls)
+            {
+                if (control is ListView listView)
+                {
+                    listView.BackColor = Color.FromArgb(30, 30, 30);
+                    listView.ForeColor = Color.White;
+                    listView.OwnerDraw = true;
+
+                    listView.DrawColumnHeader += (sender, headerScore) =>
+                    {
+                        headerScore.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(45, 45, 48)), headerScore.Bounds);
+                        headerScore.Graphics.DrawRectangle(new Pen(Color.FromArgb(60, 60, 60)), headerScore.Bounds);
+                        TextRenderer.DrawText(headerScore.Graphics, listView.Columns[headerScore.ColumnIndex].Text, listView.Font, headerScore.Bounds, Color.White, TextFormatFlags.VerticalCenter | TextFormatFlags.Left);
+                    };
+
+                    listView.DrawItem += (sender, itemScore) =>
+                    {
+                        if (itemScore.Item.Selected)
+                        {
+                            itemScore.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(60, 60, 60)), itemScore.Bounds);
+                        }
+                        else
+                        {
+                            itemScore.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(30, 30, 30)), itemScore.Bounds);
+                        }
+                        // TextureViewer uses image for first column usually?
+                        // But looking at code, it seems standard Details view.
+                        // Let's use standard drawing for text.
+                        // Wait, TextureViewer might have images. 
+                        // The Designer shows columns: Texture, Dimensions, Pixel Format...
+                        // It doesn't seem to have a SmallImageList attached in Designer (listView.SmallImageList is not set in InitializeComponent).
+                        // So text only is fine.
+                        itemScore.DrawText();
+                    };
+
+                    listView.DrawSubItem += (sender, subItemScore) =>
+                    {
+                        if (subItemScore.Item.Selected)
+                        {
+                            subItemScore.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(60, 60, 60)), subItemScore.Bounds);
+                        }
+                        else
+                        {
+                            subItemScore.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(30, 30, 30)), subItemScore.Bounds);
+                        }
+                        
+                        // Explicitly draw text to ensure visibility
+                        TextFormatFlags flags = TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis;
+                        using (var brush = new SolidBrush(Color.White))
+                        {
+                            // Adjust bounds for padding if necessary, but standard bounds usually work
+                            TextRenderer.DrawText(subItemScore.Graphics, subItemScore.SubItem.Text, listView.Font, subItemScore.Bounds, Color.White, flags);
+                        }
+                    };
+                }
+                else if (control is MenuStrip menuStrip)
+                {
+                    menuStrip.BackColor = Color.FromArgb(45, 45, 48);
+                    menuStrip.ForeColor = Color.White;
+                    menuStrip.Renderer = new DarkThemeRenderer();
+                    foreach (ToolStripItem item in menuStrip.Items)
+                    {
+                        item.BackColor = Color.FromArgb(45, 45, 48);
+                        item.ForeColor = Color.White;
+                    }
+                }
+                else if (control is ToolStrip toolStrip)
+                {
+                    toolStrip.BackColor = Color.FromArgb(45, 45, 48);
+                    toolStrip.ForeColor = Color.White;
+                    toolStrip.Renderer = new DarkThemeRenderer();
+                    foreach (ToolStripItem item in toolStrip.Items)
+                    {
+                        item.BackColor = Color.FromArgb(45, 45, 48);
+                        item.ForeColor = Color.White;
+                    }
+                }
+                else if (control is SplitContainer split)
+                {
+                    split.BackColor = Color.FromArgb(45, 45, 48);
+                    ApplyThemeToControls(split.Panel1.Controls);
+                    // Panel 2 in TextureViewer is often the image background, so we might want to be careful not to override it if it's set to a specific color/image
+                    // valid logic: if UseCustomColor or specific setting is active, the constructor handles it. 
+                    // But here we are setting the split container divider color basically. 
+                    ApplyThemeToControls(split.Panel2.Controls);
+                }
+
+                if (control.HasChildren)
+                {
+                    ApplyThemeToControls(control.Controls);
+                }
+            }
+        }
+
+        private class DarkThemeRenderer : ToolStripProfessionalRenderer
+        {
+            public DarkThemeRenderer() : base(new DarkThemeColorTable()) { }
+        }
+
+        private class DarkThemeColorTable : ProfessionalColorTable
+        {
+            public override Color MenuItemSelected => Color.FromArgb(60, 60, 60);
+            public override Color MenuItemSelectedGradientBegin => Color.FromArgb(60, 60, 60);
+            public override Color MenuItemSelectedGradientEnd => Color.FromArgb(60, 60, 60);
+            public override Color MenuBorder => Color.FromArgb(45, 45, 48);
+            public override Color MenuItemBorder => Color.FromArgb(60, 60, 60);
+            public override Color MenuItemPressedGradientBegin => Color.FromArgb(45, 45, 48);
+            public override Color MenuItemPressedGradientEnd => Color.FromArgb(45, 45, 48);
+            public override Color ToolStripDropDownBackground => Color.FromArgb(45, 45, 48);
+            public override Color ImageMarginGradientBegin => Color.FromArgb(45, 45, 48);
+            public override Color ImageMarginGradientMiddle => Color.FromArgb(45, 45, 48);
+            public override Color ImageMarginGradientEnd => Color.FromArgb(45, 45, 48);
+            public override Color ButtonSelectedHighlight => Color.FromArgb(60, 60, 60);
+            public override Color ButtonSelectedGradientBegin => Color.FromArgb(60, 60, 60);
+            public override Color ButtonSelectedGradientEnd => Color.FromArgb(60, 60, 60);
+            public override Color ButtonPressedGradientBegin => Color.FromArgb(45, 45, 48);
+            public override Color ButtonPressedGradientEnd => Color.FromArgb(45, 45, 48);
+            public override Color ButtonSelectedBorder => Color.FromArgb(60, 60, 60);
         }
 
         #region Controls

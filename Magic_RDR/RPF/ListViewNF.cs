@@ -12,15 +12,16 @@ namespace Magic_RDR.RPF
 
             //Enable the OnNotifyMessage event so we get a chance to filter out Windows messages before they get to the form's WndProc
             this.SetStyle(ControlStyles.EnableNotifyMessage, true);
+            
+            // Enable ResizeRedraw to ensure correct column resizing repaint
+            this.ResizeRedraw = true;
         }
 
         protected override void OnNotifyMessage(Message m)
         {
-            //Filter out the WM_ERASEBKGND message
-            if (m.Msg != 0x14)
-            {
-                base.OnNotifyMessage(m);
-            }
+            // Allow WM_ERASEBKGND (0x14) to pass through to ensure background painting works, especially for Dark Mode.
+            // Suppression prevents BackColor from being rendered in empty areas.
+            base.OnNotifyMessage(m);
         }
     }
 

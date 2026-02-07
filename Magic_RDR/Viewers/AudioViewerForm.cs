@@ -7,12 +7,16 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
+using System.Drawing;
 using static Magic_RDR.RPF6.RPF6TOC;
 
 namespace Magic_RDR.Viewers
 {
 	public partial class AudioViewerForm : Form
 	{
+        [DllImport("uxtheme.dll", ExactSpelling = true, CharSet = CharSet.Unicode)]
+        public static extern int SetWindowTheme(IntPtr hWnd, string pszSubAppName, string pszSubIdList);
+
 		private string awcPath;
 		private string[] wavPath;
 		private int SampleCount;
@@ -22,6 +26,7 @@ namespace Magic_RDR.Viewers
 		public AudioViewerForm(TOCSuperEntry entry)
 		{
 			InitializeComponent();
+            SetTheme();
 			this.Text = string.Format("MagicRDR - Audio Player [{0}]", entry.Entry.Name);
 
 			this.IsSwitch = AppGlobals.Platform == AppGlobals.PlatformEnum.Switch;
@@ -54,8 +59,16 @@ namespace Magic_RDR.Viewers
 				listView.Items.Clear();
 				listView.Items.AddRange(items.ToArray());
 				listView.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
+				listView.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
 				listView.AutoResizeColumns(ColumnHeaderAutoResizeStyle.HeaderSize);
 				listView.EndUpdate();
+                
+                // Ensure Theme is applied AFTER items are added
+                if (Magic_RDR.RPF.RPF6FileNameHandler.DarkMode)
+                {
+                    listView.BackColor = Color.FromArgb(30,30,30);
+                    listView.ForeColor = Color.White;
+                }
 
 				var actualPath = wavPath[0];
 				var infoStart = actualPath.IndexOf(" - (");
@@ -119,8 +132,16 @@ namespace Magic_RDR.Viewers
 			listView.Items.Clear();
 			listView.Items.AddRange(list.ToArray());
 			listView.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
+			listView.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
 			listView.AutoResizeColumns(ColumnHeaderAutoResizeStyle.HeaderSize);
 			listView.EndUpdate();
+            
+            // Ensure Theme is applied AFTER items are added
+            if (Magic_RDR.RPF.RPF6FileNameHandler.DarkMode)
+            {
+                listView.BackColor = Color.FromArgb(30,30,30);
+                listView.ForeColor = Color.White;
+            }
 
 			Thread.Sleep(1000);
 			if (!File.Exists(wavPath[0]))
@@ -129,7 +150,150 @@ namespace Magic_RDR.Viewers
 				Close();
 				return;
 			}
+			SetTheme();
 		}
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+
+		private void SetTheme()
+		{
+			if (Magic_RDR.RPF.RPF6FileNameHandler.DarkMode)
+			{
+				this.BackColor = Color.FromArgb(45, 45, 48);
+				this.ForeColor = Color.White;
+				ApplyThemeToControls(this.Controls);
+
+                // Enable Dark Title Bar
+                int useImmersiveDarkMode = 1;
+                DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useImmersiveDarkMode, sizeof(int));
+                
+                // Handle ListView Resize
+                listView.Resize -= ListView_Resize;
+                listView.Resize += ListView_Resize;
+                ListView_Resize(listView, EventArgs.Empty);
+			}
+		}
+
+        private void ListView_Resize(object sender, EventArgs e)
+        {
+            ListView lv = sender as ListView;
+            if (lv == null || lv.Columns.Count == 0) return;
+
+            int totalWidth = 0;
+            for (int i = 0; i < lv.Columns.Count - 1; i++)
+            {
+                totalWidth += lv.Columns[i].Width;
+            }
+
+            int remaining = lv.ClientSize.Width - totalWidth;
+            if (remaining > 50) 
+            {
+                 lv.Columns[lv.Columns.Count - 1].Width = remaining - 4;
+            }
+        }
+
+		private void ApplyThemeToControls(Control.ControlCollection controls)
+		{
+			foreach (Control control in controls)
+			{
+				if (control is ListView listView)
+				{
+					listView.BackColor = Color.FromArgb(30, 30, 30);
+					listView.ForeColor = Color.White;
+                    listView.OwnerDraw = true;
+                    SetWindowTheme(listView.Handle, "DarkMode_Explorer", null);
+
+                    listView.DrawColumnHeader += (sender, headerScore) =>
+                    {
+                        headerScore.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(45, 45, 48)), headerScore.Bounds);
+                        headerScore.Graphics.DrawRectangle(new Pen(Color.FromArgb(60, 60, 60)), headerScore.Bounds);
+                        TextRenderer.DrawText(headerScore.Graphics, listView.Columns[headerScore.ColumnIndex].Text, listView.Font, headerScore.Bounds, Color.White, TextFormatFlags.VerticalCenter | TextFormatFlags.Left);
+                    };
+
+                    listView.DrawItem += (sender, itemScore) =>
+                    {
+                        if (itemScore.Item.Selected)
+                        {
+                            itemScore.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(60, 60, 60)), itemScore.Bounds);
+                        }
+                        else
+                        {
+                            itemScore.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(30, 30, 30)), itemScore.Bounds);
+                        }
+                        itemScore.DrawText();
+                    };
+
+                    listView.DrawSubItem += (sender, subItemScore) =>
+                    {
+                        if (subItemScore.Item.Selected)
+                        {
+                            subItemScore.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(60, 60, 60)), subItemScore.Bounds);
+                        }
+                        else
+                        {
+                            subItemScore.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(30, 30, 30)), subItemScore.Bounds);
+                        }
+                        subItemScore.DrawText();
+                    };
+				}
+				else if (control is MenuStrip menuStrip)
+				{
+					menuStrip.BackColor = Color.FromArgb(45, 45, 48);
+					menuStrip.ForeColor = Color.White;
+					menuStrip.Renderer = new DarkThemeRenderer();
+					foreach (ToolStripItem item in menuStrip.Items)
+					{
+						item.BackColor = Color.FromArgb(45, 45, 48);
+						item.ForeColor = Color.White;
+					}
+				}
+				else if (control is ToolStrip toolStrip)
+				{
+					toolStrip.BackColor = Color.FromArgb(45, 45, 48);
+					toolStrip.ForeColor = Color.White;
+					toolStrip.Renderer = new DarkThemeRenderer();
+					foreach (ToolStripItem item in toolStrip.Items)
+					{
+						item.BackColor = Color.FromArgb(45, 45, 48);
+						item.ForeColor = Color.White;
+					}
+				}
+
+				if (control.HasChildren)
+				{
+					ApplyThemeToControls(control.Controls);
+				}
+			}
+		}
+
+        private class DarkThemeRenderer : ToolStripProfessionalRenderer
+        {
+            public DarkThemeRenderer() : base(new DarkThemeColorTable()) { }
+        }
+
+        private class DarkThemeColorTable : ProfessionalColorTable
+        {
+            public override Color MenuItemSelected => Color.FromArgb(60, 60, 60);
+            public override Color MenuItemSelectedGradientBegin => Color.FromArgb(60, 60, 60);
+            public override Color MenuItemSelectedGradientEnd => Color.FromArgb(60, 60, 60);
+            public override Color MenuBorder => Color.FromArgb(45, 45, 48);
+            public override Color MenuItemBorder => Color.FromArgb(60, 60, 60);
+            public override Color MenuItemPressedGradientBegin => Color.FromArgb(45, 45, 48);
+            public override Color MenuItemPressedGradientEnd => Color.FromArgb(45, 45, 48);
+            public override Color ToolStripDropDownBackground => Color.FromArgb(45, 45, 48);
+            public override Color ImageMarginGradientBegin => Color.FromArgb(45, 45, 48);
+            public override Color ImageMarginGradientMiddle => Color.FromArgb(45, 45, 48);
+            public override Color ImageMarginGradientEnd => Color.FromArgb(45, 45, 48);
+			public override Color ButtonSelectedHighlight => Color.FromArgb(60, 60, 60);
+			public override Color ButtonSelectedGradientBegin => Color.FromArgb(60, 60, 60);
+			public override Color ButtonSelectedGradientEnd => Color.FromArgb(60, 60, 60);
+			public override Color ButtonPressedGradientBegin => Color.FromArgb(45, 45, 48);
+			public override Color ButtonPressedGradientEnd => Color.FromArgb(45, 45, 48);
+			public override Color ButtonSelectedBorder => Color.FromArgb(60, 60, 60);
+        }
 
 		#region Controls
 

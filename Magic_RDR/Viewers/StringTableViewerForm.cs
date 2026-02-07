@@ -6,12 +6,17 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
+using System.Drawing;
+using System.Runtime.InteropServices;
 using static Magic_RDR.RPF6.RPF6TOC;
 
 namespace Magic_RDR.Viewers
 {
     public partial class StringTableViewerForm : Form
     {
+        [DllImport("uxtheme.dll", ExactSpelling = true, CharSet = CharSet.Unicode)]
+        public static extern int SetWindowTheme(IntPtr hWnd, string pszSubAppName, string pszSubIdList);
+
         private TOCSuperEntry Entry;
         private RPF6 RPF;
         private StringTable Table;
@@ -27,6 +32,187 @@ namespace Magic_RDR.Viewers
             this.RPF = rpf;
             this.InitData();
             this.entryCountLabel.Text = string.Format("{0} entries", Table.Entries.Count == 0 ? (int)Table.StringCount : Table.Entries.Count);
+            SetTheme();
+        }
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+
+        private void SetTheme()
+        {
+            if (RPF6FileNameHandler.DarkMode)
+            {
+                this.BackColor = Color.FromArgb(45, 45, 48);
+                this.ForeColor = Color.White;
+                ApplyThemeToControls(this.Controls);
+
+                // Enable Dark Title Bar
+                int useImmersiveDarkMode = 1;
+                DwmSetWindowAttribute(this.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useImmersiveDarkMode, sizeof(int));
+            }
+        }
+
+        private void ApplyThemeToControls(Control.ControlCollection controls)
+        {
+            foreach (Control control in controls)
+            {
+                if (control is ListView listView)
+                {
+                    listView.BackColor = Color.FromArgb(30, 30, 30);
+                    listView.ForeColor = Color.White;
+                    listView.OwnerDraw = true;
+                    SetWindowTheme(listView.Handle, "DarkMode_Explorer", null);
+                    
+                    listView.Resize -= ListView_Resize;
+                    listView.Resize += ListView_Resize;
+                    ListView_Resize(listView, EventArgs.Empty);
+
+                    listView.DrawColumnHeader += (sender, headerScore) =>
+                    {
+                        headerScore.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(45, 45, 48)), headerScore.Bounds);
+                        headerScore.Graphics.DrawRectangle(new Pen(Color.FromArgb(60, 60, 60)), headerScore.Bounds);
+                        TextRenderer.DrawText(headerScore.Graphics, listView.Columns[headerScore.ColumnIndex].Text, listView.Font, headerScore.Bounds, Color.White, TextFormatFlags.VerticalCenter | TextFormatFlags.Left);
+                    };
+
+                    listView.DrawItem += (sender, itemScore) =>
+                    {
+                        if (itemScore.Item.Selected)
+                        {
+                            itemScore.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(60, 60, 60)), itemScore.Bounds);
+                        }
+                        else
+                        {
+                            itemScore.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(30, 30, 30)), itemScore.Bounds);
+                        }
+                        itemScore.DrawText();
+                    };
+
+                    listView.DrawSubItem += (sender, subItemScore) =>
+                    {
+                        if (subItemScore.Item.Selected)
+                        {
+                            subItemScore.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(60, 60, 60)), subItemScore.Bounds);
+                        }
+                        else
+                        {
+                            subItemScore.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(30, 30, 30)), subItemScore.Bounds);
+                        }
+                        subItemScore.DrawText();
+                    };
+                }
+                else if (control is MenuStrip menuStrip)
+                {
+                    menuStrip.BackColor = Color.FromArgb(45, 45, 48);
+                    menuStrip.ForeColor = Color.White;
+                    menuStrip.Renderer = new DarkThemeRenderer();
+                    foreach (ToolStripItem item in menuStrip.Items)
+                    {
+                        item.BackColor = Color.FromArgb(45, 45, 48);
+                        item.ForeColor = Color.White;
+                    }
+                }
+                else if (control is ToolStrip toolStrip)
+                {
+                    toolStrip.BackColor = Color.FromArgb(45, 45, 48);
+                    toolStrip.ForeColor = Color.White;
+                    toolStrip.Renderer = new DarkThemeRenderer();
+                    foreach (ToolStripItem item in toolStrip.Items)
+                    {
+                        item.BackColor = Color.FromArgb(45, 45, 48);
+                        item.ForeColor = Color.White;
+                    }
+                }
+                else if (control is TabControl tabControl)
+                {
+                    tabControl.Appearance = TabAppearance.Normal; 
+                    tabControl.DrawMode = TabDrawMode.OwnerDrawFixed;
+                    tabControl.Padding = new Point(16, 4); // Add some padding for comfort
+                    tabControl.DrawItem -= TabControl_DrawItem; // Prevent Valid
+                    tabControl.DrawItem += TabControl_DrawItem; // Add Handler
+                    SetWindowTheme(tabControl.Handle, "DarkMode_Explorer", null);
+                }
+                else if (control is TabPage tabPage)
+                {
+                    tabPage.BackColor = Color.FromArgb(45, 45, 48);
+                    tabPage.ForeColor = Color.White;
+                }
+
+                if (control.HasChildren)
+                {
+                    ApplyThemeToControls(control.Controls);
+                }
+            }
+        }
+
+        private void ListView_Resize(object sender, EventArgs e)
+        {
+            ListView lv = sender as ListView;
+            if (lv == null || lv.Columns.Count == 0) return;
+
+            int totalWidth = 0;
+            // Sum width of all columns EXCEPT the last one
+            for (int i = 0; i < lv.Columns.Count - 1; i++)
+            {
+                totalWidth += lv.Columns[i].Width;
+            }
+
+            int remaining = lv.ClientSize.Width - totalWidth;
+            if (remaining > 50) 
+            {
+                    lv.Columns[lv.Columns.Count - 1].Width = remaining - 4;
+            }
+        }
+
+        private void TabControl_DrawItem(object sender, DrawItemEventArgs e)
+        {
+            TabControl tc = sender as TabControl;
+            TabPage page = tc.TabPages[e.Index];
+            Rectangle tabBounds = tc.GetTabRect(e.Index);
+
+            // Background of the tab header
+            Color backColor = (e.State == DrawItemState.Selected) ? Color.FromArgb(60, 60, 60) : Color.FromArgb(45, 45, 48);
+            using (SolidBrush brush = new SolidBrush(backColor))
+            {
+                e.Graphics.FillRectangle(brush, tabBounds);
+            }
+
+            // Text
+            Color textColor = (e.State == DrawItemState.Selected) ? Color.White : Color.Gray;
+            TextRenderer.DrawText(e.Graphics, page.Text, tc.Font, tabBounds, textColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            
+            // Clean up focus rectangle
+            if (e.State == DrawItemState.Selected)
+            {
+               e.DrawFocusRectangle();
+            }
+        }
+
+        private class DarkThemeRenderer : ToolStripProfessionalRenderer
+        {
+            public DarkThemeRenderer() : base(new DarkThemeColorTable()) { }
+        }
+
+        private class DarkThemeColorTable : ProfessionalColorTable
+        {
+            public override Color MenuItemSelected => Color.FromArgb(60, 60, 60);
+            public override Color MenuItemSelectedGradientBegin => Color.FromArgb(60, 60, 60);
+            public override Color MenuItemSelectedGradientEnd => Color.FromArgb(60, 60, 60);
+            public override Color MenuBorder => Color.FromArgb(45, 45, 48);
+            public override Color MenuItemBorder => Color.FromArgb(60, 60, 60);
+            public override Color MenuItemPressedGradientBegin => Color.FromArgb(45, 45, 48);
+            public override Color MenuItemPressedGradientEnd => Color.FromArgb(45, 45, 48);
+            public override Color ToolStripDropDownBackground => Color.FromArgb(45, 45, 48);
+            public override Color ImageMarginGradientBegin => Color.FromArgb(45, 45, 48);
+            public override Color ImageMarginGradientMiddle => Color.FromArgb(45, 45, 48);
+            public override Color ImageMarginGradientEnd => Color.FromArgb(45, 45, 48);
+            public override Color ButtonSelectedHighlight => Color.FromArgb(60, 60, 60);
+            public override Color ButtonSelectedGradientBegin => Color.FromArgb(60, 60, 60);
+            public override Color ButtonSelectedGradientEnd => Color.FromArgb(60, 60, 60);
+            public override Color ButtonPressedGradientBegin => Color.FromArgb(45, 45, 48);
+            public override Color ButtonPressedGradientEnd => Color.FromArgb(45, 45, 48);
+            public override Color ButtonSelectedBorder => Color.FromArgb(60, 60, 60);
         }
 
         private void InitData()
@@ -96,6 +282,37 @@ namespace Magic_RDR.Viewers
                         LabelEdit = supportedLanguage,
                         Enabled = supportedLanguage
                     };
+
+                    // Apply Theme Early
+                    if (RPF6FileNameHandler.DarkMode)
+                    {
+                         lv.BackColor = Color.FromArgb(30, 30, 30);
+                         lv.ForeColor = Color.White;
+                         lv.OwnerDraw = true;
+                         SetWindowTheme(lv.Handle, "DarkMode_Explorer", null);
+                         lv.DrawColumnHeader += (sender, headerScore) =>
+                         {
+                              headerScore.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(45, 45, 48)), headerScore.Bounds);
+                              headerScore.Graphics.DrawRectangle(new Pen(Color.FromArgb(60, 60, 60)), headerScore.Bounds);
+                              TextRenderer.DrawText(headerScore.Graphics, lv.Columns[headerScore.ColumnIndex].Text, lv.Font, headerScore.Bounds, Color.White, TextFormatFlags.VerticalCenter | TextFormatFlags.Left);
+                         };
+                         lv.DrawItem += (sender, itemScore) =>
+                         {
+                              if (itemScore.Item.Selected)
+                                   itemScore.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(60, 60, 60)), itemScore.Bounds);
+                              else
+                                   itemScore.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(30, 30, 30)), itemScore.Bounds);
+                              itemScore.DrawText();
+                         };
+                         lv.DrawSubItem += (sender, subItemScore) =>
+                         {
+                              if (subItemScore.Item.Selected)
+                                   subItemScore.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(60, 60, 60)), subItemScore.Bounds);
+                              else
+                                   subItemScore.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(30, 30, 30)), subItemScore.Bounds);
+                              subItemScore.DrawText();
+                         };
+                    }
 
                     lv.Columns.Add("Index", 50);
                     lv.Columns.Add("Value", 3000);

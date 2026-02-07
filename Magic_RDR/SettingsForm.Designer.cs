@@ -37,6 +37,9 @@ namespace Magic_RDR
             this.imageSizeModeLabel = new System.Windows.Forms.Label();
             this.sizeModeComboBox = new System.Windows.Forms.ComboBox();
             this.checkBoxUseLastRPF = new System.Windows.Forms.CheckBox();
+            this.checkBoxEncryptTOC = new System.Windows.Forms.CheckBox();
+            this.checkBoxEncryptData = new System.Windows.Forms.CheckBox();
+            this.checkBoxDarkMode = new System.Windows.Forms.CheckBox();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.checkBoxUseCustomColor = new System.Windows.Forms.CheckBox();
             this.saveLabel = new System.Windows.Forms.Label();
@@ -65,6 +68,9 @@ namespace Magic_RDR
             this.panel1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.panel1.Controls.Add(this.groupBox2);
             this.panel1.Controls.Add(this.checkBoxUseLastRPF);
+            this.panel1.Controls.Add(this.checkBoxEncryptTOC);
+            this.panel1.Controls.Add(this.checkBoxEncryptData);
+            this.panel1.Controls.Add(this.checkBoxDarkMode);
             this.panel1.Controls.Add(this.groupBox1);
             this.panel1.Controls.Add(this.saveLabel);
             this.panel1.Controls.Add(this.saveButton);
@@ -73,7 +79,7 @@ namespace Magic_RDR
             this.panel1.ForeColor = System.Drawing.SystemColors.ControlText;
             this.panel1.Location = new System.Drawing.Point(10, 10);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(318, 376);
+            this.panel1.Size = new System.Drawing.Size(318, 426);
             this.panel1.TabIndex = 0;
             // 
             // groupBox2
@@ -154,6 +160,39 @@ namespace Magic_RDR
             this.checkBoxUseLastRPF.UseVisualStyleBackColor = true;
             this.checkBoxUseLastRPF.CheckedChanged += new System.EventHandler(this.checkBoxUseLastRPF_CheckedChanged);
             // 
+            // checkBoxEncryptTOC
+            // 
+            this.checkBoxEncryptTOC.AutoSize = true;
+            this.checkBoxEncryptTOC.Location = new System.Drawing.Point(12, 315);
+            this.checkBoxEncryptTOC.Name = "checkBoxEncryptTOC";
+            this.checkBoxEncryptTOC.Size = new System.Drawing.Size(88, 17);
+            this.checkBoxEncryptTOC.TabIndex = 5;
+            this.checkBoxEncryptTOC.Text = "Encrypt TOC";
+            this.checkBoxEncryptTOC.UseVisualStyleBackColor = true;
+            this.checkBoxEncryptTOC.CheckedChanged += new System.EventHandler(this.checkBoxEncryptTOC_CheckedChanged);
+            // 
+            // checkBoxEncryptData
+            // 
+            this.checkBoxEncryptData.AutoSize = true;
+            this.checkBoxEncryptData.Location = new System.Drawing.Point(12, 340);
+            this.checkBoxEncryptData.Name = "checkBoxEncryptData";
+            this.checkBoxEncryptData.Size = new System.Drawing.Size(88, 17);
+            this.checkBoxEncryptData.TabIndex = 6;
+            this.checkBoxEncryptData.Text = "Encrypt Data";
+            this.checkBoxEncryptData.UseVisualStyleBackColor = true;
+            this.checkBoxEncryptData.CheckedChanged += new System.EventHandler(this.checkBoxEncryptData_CheckedChanged);
+            // 
+            // checkBoxDarkMode
+            // 
+            this.checkBoxDarkMode.AutoSize = true;
+            this.checkBoxDarkMode.Location = new System.Drawing.Point(12, 365);
+            this.checkBoxDarkMode.Name = "checkBoxDarkMode";
+            this.checkBoxDarkMode.Size = new System.Drawing.Size(88, 17);
+            this.checkBoxDarkMode.TabIndex = 7;
+            this.checkBoxDarkMode.Text = "Dark Mode";
+            this.checkBoxDarkMode.UseVisualStyleBackColor = true;
+            this.checkBoxDarkMode.CheckedChanged += new System.EventHandler(this.checkBoxDarkMode_CheckedChanged);
+            // 
             // groupBox1
             // 
             this.groupBox1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
@@ -181,7 +220,7 @@ namespace Magic_RDR
             // 
             this.saveLabel.AutoSize = true;
             this.saveLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.saveLabel.Location = new System.Drawing.Point(79, 322);
+            this.saveLabel.Location = new System.Drawing.Point(79, 390);
             this.saveLabel.Name = "saveLabel";
             this.saveLabel.Size = new System.Drawing.Size(162, 15);
             this.saveLabel.TabIndex = 4;
@@ -190,7 +229,7 @@ namespace Magic_RDR
             // saveButton
             // 
             this.saveButton.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
-            this.saveButton.Location = new System.Drawing.Point(7, 340);
+            this.saveButton.Location = new System.Drawing.Point(7, 410);
             this.saveButton.Name = "saveButton";
             this.saveButton.Size = new System.Drawing.Size(303, 28);
             this.saveButton.TabIndex = 3;
@@ -264,7 +303,6 @@ namespace Magic_RDR
             // 
             this.groupBoxTreeView.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.groupBoxTreeView.BackColor = System.Drawing.SystemColors.Control;
             this.groupBoxTreeView.Controls.Add(this.checkBoxShowPlusMinus);
             this.groupBoxTreeView.Controls.Add(this.checkBoxShowLines);
             this.groupBoxTreeView.Location = new System.Drawing.Point(6, 6);
@@ -305,7 +343,7 @@ namespace Magic_RDR
             this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             this.BackColor = System.Drawing.SystemColors.ControlLight;
-            this.ClientSize = new System.Drawing.Size(340, 398);
+            this.ClientSize = new System.Drawing.Size(340, 520);
             this.Controls.Add(this.panel1);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -349,5 +387,8 @@ namespace Magic_RDR
         private System.Windows.Forms.ComboBox backgroundTextureComboBox;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.ComboBox sortColumnComboBox;
+        private System.Windows.Forms.CheckBox checkBoxEncryptTOC;
+        private System.Windows.Forms.CheckBox checkBoxEncryptData;
+        private System.Windows.Forms.CheckBox checkBoxDarkMode;
     }
 }

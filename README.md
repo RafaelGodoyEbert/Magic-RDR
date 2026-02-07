@@ -34,7 +34,7 @@ To create a new subfolder within an RPF archive:
 ### Enabling Dark Mode
 1. Go to **Options** > **Settings** in the main menu.
 2. Check the **Dark Mode** box.
-3. The interface will instantly switch to the dark theme (no restart required).
+3. The interface will instantly switch to the dark theme.
 
 # Credits
 - Im Foxxyyy (Mars)
